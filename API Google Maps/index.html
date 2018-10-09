@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>GMaps</title>
+    <style>
+      #map {
+        height: 400px;
+        width: 100%;
+       }
+    </style>
+  </head>
+  <body>
+    <h3>Twoja lokalizacja</h3>
+    <div id="map"></div>
+    <script>
+      let map, marker = []                                          // Dodajemy marker i podstawiamy własny marker
+      let blueDot = 'http://i67.tinypic.com/2nroqyf.png'
+      
+      let markerLat, markerLng
+      let myId = 9999
+      let myColor = '70a0c0'
+
+      let ws = new WebSocket('ws://szkolenia.design.net.pl:8010')   // Podpinamy się pod websocket'a
+      ws.addEventListener('message', aktualizujMape)
+
+      function aktualizujMape(ev) {                                 // Aktualizuj pozycję na mapie
+        let el = JSON.parse(ev.data)
+        let newPos = {lat: el.lat, lng: el.lng}
+
+        if(marker[el.id]) {
+          marker[el.id].setPosition(newPos)
+        } else {
+          let pinColor = el.color
+          let pinImage = new google.maps.MarkerImage("http://i67.tinypic.com/2nroqyf.png",
+          new google.maps.Size(21, 34),
+          new google.maps.Point(0,0),
+          new google.maps.Point(10, 34));
+
+          marker[el.id] = new google.maps.Marker({
+            position: newPos,
+            map: map,
+            animation: google.maps.Animation.DROP,
+            draggable: true,
+            icon: pinImage
+          })
+        }
+      }
+      document.addEventListener('keydown', zmienPolozenie)        // Poruszanie się po mapie za pomocą strzałek
+      function zmienPolozenie(ev) {
+        switch (ev.keyCode) {
+          case 37:                                                // Przemieść się w lewo
+            markerLng -= 0.01
+            break
+          case 39:                                                // Przemieść się w prawo
+            markerLng += 0.01
+            break
+          case 38:                                                // Przemieść się do góry
+            markerLat += 0.01
+            break
+          case 40:                                                // Przemieść się w dół
+            markerLat -= 0.01
+            break
+        }
+        let ob = {
+          id: myId,
+          lat: markerLat,
+          lng: markerLng,
+          color: myColor
+        }
+        ws.send(JSON.stringify(ob))
+      }
+      function initMap() {
+        pobierzLokalizacje()
+
+        let uluru = {lat: 40, lng: 10};
+        markerLat = 40
+        markerLng = 10
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 4,
+          center: uluru,
+          keyboardShortcuts: false
+        });
+
+        let pinImage = new google.maps.MarkerImage("http://i67.tinypic.com/2nroqyf.png",
+          new google.maps.Size(21, 34),
+          new google.maps.Point(0,0),
+          new google.maps.Point(10, 34));
+          
+        marker[myId] = new google.maps.Marker({
+          position: uluru,
+          map: map,
+          animation: google.maps.Animation.DROP,
+          draggable: true,
+          icon: pinImage
+        });
+      }
+      
+      function pobierzLokalizacje() {                                  // Zezwolenie na określenie lokalizacji
+            navigator.geolocation.getCurrentPosition(geoOk, geoFail)
+        }
+
+      function geoOk( p ) {                                           // Uzytkownik wyraził zgodę na pobranie lokalizacji
+            console.log(p)
+            let myLat = p.coords.latitude
+            let myLng = p.coords.longitude
+            markerLat = myLat
+            markerLng = myLng
+            marker[myId].setPosition({lat: myLat, lng: myLng})
+            map.setCenter({lat: myLat, lng: myLng})
+            map.setZoom(17)
+        }
+
+      function geoFail(err) {                                         // Uzytkownik nie wyraził zgody na pobranie lokalizacji
+            console.log(err)
+        }
+    </script>
+    <script async defer                                           
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBsnM8rZnXpkjff4mFMdd5XBH5oyWCFieY&callback=initMap">  // Podpięcie się pod wygenerowane API
+    </script>
+  </body>
+</html>
